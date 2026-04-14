@@ -1,32 +1,24 @@
+
 import yfinance as yf
 import json
 import os
 from datetime import datetime, timedelta
 import pandas as pd
 
-# ── ETF Universe ──────────────────────────────────────────────────────────────
 ETFS = [
-    # Broad Market
     "SPY","IVV","VOO","VTI","ITOT","SCHB","IWM","IWF","IWD","MDY","IJH","IJR",
-    # NASDAQ / Growth
     "QQQ","QQQM","VUG","VONG","IWY",
-    # International
     "VEA","VWO","EFA","EEM","IEFA","IEMG","VGK","EWJ","FXI","EWZ",
-    # Bonds
-    "AGG","BND","TLT","IEF","SHY","LQD","HYG","MUB","TIPS","VCIT",
-    # Sector
+    "AGG","BND","TLT","IEF","SHY","LQD","HYG","MUB","VCIT",
     "XLK","XLF","XLV","XLE","XLY","XLP","XLI","XLB","XLU","XLRE","XLC",
-    # Thematic / Factor
     "GLD","SLV","GDX","USO","DBC","VNQ","ARKK","ARKG","ARKW","ARKF",
-    "ICLN","CLEAN","SOXX","SMH","IBB","XBI","JETS","BOTZ","ROBO",
-    # Dividend
+    "ICLN","SOXX","SMH","IBB","XBI","JETS","BOTZ",
     "VYM","SCHD","DVY","SDY","HDV","DGRO",
-    # Leveraged (informational)
     "TQQQ","SQQQ","UPRO","SPXU",
 ]
 BENCHMARK = "SPY"
 
-DATA_FILE = "docs/data/etf_data.json"
+DATA_FILE  = "docs/data/etf_data.json"
 HISTORY_FILE = "docs/data/etf_history.json"
 
 def pct(new, old):
@@ -45,78 +37,86 @@ def save_json(path, data):
     with open(path, "w") as f:
         json.dump(data, f)
 
-def fetch_returns(ticker, end, periods):
-    """Download enough history and compute returns for each period."""
-    start = end - timedelta(days=periods["3Y"] + 10)
-    df = yf.download(ticker, start=start.strftime("%Y-%m-%d"),
-                     end=(end + timedelta(days=1)).strftime("%Y-%m-%d"),
-                     progress=False, auto_adjust=True)
-    if df.empty:
-        return None, {}
+def fetch_ticker_data(ticker, periods):
+    """
+    Download ~3.5 years of data. Works even on holidays/weekends because
+    we always take the LAST available row rather than today's date.
+    """
+    end   = datetime.utcnow().date()
+    start = end - timedelta(days=periods["3Y"] + 30)   # extra buffer
 
-    # Latest close
-    price = float(df["Close"].iloc[-1])
+    df = yf.download(
+        ticker,
+        start=start.strftime("%Y-%m-%d"),
+        end=(end + timedelta(days=1)).strftime("%Y-%m-%d"),
+        progress=False,
+        auto_adjust=True,
+    )
+
+    if df.empty:
+        return None
+
+    # ── Use last available trading day (handles holidays & weekends) ──
+    price      = float(df["Close"].iloc[-1])
+    last_date  = df.index[-1].date().strftime("%Y-%m-%d")
     prev_close = float(df["Close"].iloc[-2]) if len(df) >= 2 else None
-    daily_ret = pct(price, prev_close)
+    daily_ret  = pct(price, prev_close)
 
     returns = {}
     for label, days in periods.items():
         target = end - timedelta(days=days)
-        past = df[df.index <= pd.Timestamp(target)]
+        past   = df[df.index.date <= target]
         if not past.empty:
             returns[label] = pct(price, float(past["Close"].iloc[-1]))
         else:
             returns[label] = None
 
-    return price, daily_ret, returns
+    return {
+        "price":   price,
+        "daily":   daily_ret,
+        "returns": returns,
+        "updated": last_date,
+    }
 
 def main():
-    today = datetime.utcnow().date()
     periods = {"1M": 30, "3M": 90, "6M": 180, "1Y": 365, "3Y": 1095}
+    today   = datetime.utcnow().date().strftime("%Y-%m-%d")
 
-    existing = load_json(DATA_FILE)
-    history = load_json(HISTORY_FILE)   # { "SPY": { "2024-01-02": 478.5, ... }, ... }
-
+    history  = load_json(HISTORY_FILE)
     snapshot = {}
-    today_str = today.strftime("%Y-%m-%d")
+    ok = 0
 
     for ticker in ETFS:
-        print(f"Fetching {ticker}...")
+        print(f"Fetching {ticker}…")
         try:
-            result = fetch_returns(ticker, today, periods)
-            if result[0] is None:
+            result = fetch_ticker_data(ticker, periods)
+            if result is None:
                 print(f"  ⚠ No data for {ticker}")
                 continue
-            price, daily_ret, rets = result
 
-            snapshot[ticker] = {
-                "price": price,
-                "daily": daily_ret,
-                "returns": rets,
-                "updated": today_str,
-            }
+            snapshot[ticker] = result
+            ok += 1
 
-            # Persist price in history
+            # Persist price keyed by the actual last trading date
             if ticker not in history:
                 history[ticker] = {}
-            history[ticker][today_str] = price
+            history[ticker][result["updated"]] = result["price"]
 
         except Exception as e:
-            print(f"  ✗ Error {ticker}: {e}")
+            print(f"  ✗ {ticker}: {e}")
 
-    # Attach benchmark for comparison in dashboard
     snapshot["_benchmark"] = BENCHMARK
-    snapshot["_updated"] = today_str
+    snapshot["_updated"]   = today
 
     save_json(DATA_FILE, snapshot)
 
-    # Trim history older than 4 years to keep file size sane
-    cutoff = (today - timedelta(days=4*365)).strftime("%Y-%m-%d")
+    # Trim history older than 4 years
+    cutoff = (datetime.utcnow().date() - timedelta(days=4*365)).strftime("%Y-%m-%d")
     for tk in history:
         history[tk] = {d: v for d, v in history[tk].items() if d >= cutoff}
     save_json(HISTORY_FILE, history)
 
-    print(f"✅ Done — {len(snapshot)-2} ETFs saved.")
+    print(f"\n✅ Done — {ok}/{len(ETFS)} ETFs saved.")
 
 if __name__ == "__main__":
     main()
