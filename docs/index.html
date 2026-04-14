@@ -123,9 +123,10 @@ const DAYS = {1M:30,3M:90,6M:180,1Y:365,3Y:1095};
 
 async function loadData(){
   try {
+    const base = window.location.pathname.replace(/\/?$/, '/');
     const [snap, hist] = await Promise.all([
-      fetch("data/etf_data.json").then(r=>r.json()),
-      fetch("data/etf_history.json").then(r=>r.json()).catch(()=>({}))
+      fetch(base + "data/etf_data.json").then(r=>r.json()),
+      fetch(base + "data/etf_history.json").then(r=>r.json()).catch(()=>({}))
     ]);
     allData = snap;
     historyData = hist;
