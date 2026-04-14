@@ -36,38 +36,37 @@ def save_json(path, data):
     with open(path, "w") as f:
         json.dump(data, f)
 
-def get_close_series(raw, ticker, n_tickers):
+def extract_close(raw, ticker):
     """
-    Safely extract a plain 1-D Close price Series regardless of
-    whether yfinance returned a flat or MultiIndex column structure.
+    Handle yfinance MultiIndex columns which come as (Ticker, Field)
+    when group_by='ticker', e.g. ('SPY', 'Close').
     """
-    if n_tickers == 1:
-        # Single ticker: columns may be flat ["Close"] or MultiIndex [("Close","SPY")]
-        if isinstance(raw.columns, pd.MultiIndex):
-            close = raw["Close"].squeeze()
-        else:
-            close = raw["Close"]
-    else:
-        # Multiple tickers: columns are MultiIndex [("Close","SPY"), ...]
-        if ("Close", ticker) in raw.columns:
-            close = raw["Close"][ticker]
-        elif "Close" in raw.columns:
-            # Flat fallback (shouldn't happen with group_by="ticker" but just in case)
-            close = raw["Close"]
-        else:
-            return None
+    cols = raw.columns
+    print(f"    DEBUG {ticker}: top-level keys = {list(cols.get_level_values(0).unique()[:5])}")
 
-    # Ensure it's a plain Series of floats, drop NaNs
-    if isinstance(close, pd.DataFrame):
-        close = close.iloc[:, 0]   # take first column if still 2-D
+    # Try (Ticker, Field) order  — group_by='ticker'
+    if (ticker, "Close") in cols:
+        close = raw[(ticker, "Close")]
+    # Try (Field, Ticker) order  — default yfinance
+    elif ("Close", ticker) in cols:
+        close = raw[("Close", ticker)]
+    # Flat columns fallback (single ticker download)
+    elif "Close" in cols:
+        close = raw["Close"]
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+    else:
+        print(f"    DEBUG {ticker}: 'Close' not found in columns {list(cols[:8])}")
+        return None
+
     close = pd.to_numeric(close, errors="coerce").dropna()
-    return close if not close.empty else None
+    return close if len(close) >= 2 else None
 
 def main():
-    periods  = {"1M": 30, "3M": 90, "6M": 180, "1Y": 365, "3Y": 1095}
-    today    = datetime.utcnow().date()
-    today_s  = today.strftime("%Y-%m-%d")
-    history  = load_json(HISTORY_FILE)
+    periods = {"1M": 30, "3M": 90, "6M": 180, "1Y": 365, "3Y": 1095}
+    today   = datetime.utcnow().date()
+    today_s = today.strftime("%Y-%m-%d")
+    history = load_json(HISTORY_FILE)
 
     end_s   = (today + timedelta(days=1)).strftime("%Y-%m-%d")
     start_s = (today - timedelta(days=periods["3Y"] + 30)).strftime("%Y-%m-%d")
@@ -82,15 +81,15 @@ def main():
         group_by="ticker",
         threads=True,
     )
-    print(f"Raw shape: {raw.shape}  |  column type: {type(raw.columns).__name__}")
+    print(f"Raw shape: {raw.shape}  |  columns sample: {list(raw.columns[:6])}")
 
     snapshot = {}
     ok = 0
 
     for ticker in ETFS:
         try:
-            close = get_close_series(raw, ticker, len(ETFS))
-            if close is None or len(close) < 2:
+            close = extract_close(raw, ticker)
+            if close is None:
                 print(f"  ⚠ {ticker}: no usable data")
                 continue
 
@@ -110,8 +109,6 @@ def main():
                 "returns": rets,
                 "updated": last_date,
             }
-
-            # Persist to history
             history.setdefault(ticker, {})[last_date] = round(price, 4)
             ok += 1
             print(f"  ✓ {ticker}: ${price:.2f}  daily={daily_ret}%")
@@ -120,7 +117,7 @@ def main():
             print(f"  ✗ {ticker}: {e}")
 
     if not ok:
-        print("ERROR: 0 ETFs fetched — aborting to preserve existing data.")
+        print("ERROR: 0 ETFs fetched — aborting.")
         sys.exit(1)
 
     snapshot["_benchmark"] = BENCHMARK
