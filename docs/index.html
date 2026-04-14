@@ -6,59 +6,49 @@
 <title>ETF Monitor</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
-  :root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--accent:#6c63ff;
-    --green:#22c55e;--red:#ef4444;--text:#e2e8f0;--muted:#94a3b8;}
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
-  header{padding:20px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
-  header h1{font-size:1.4rem;font-weight:700;letter-spacing:-.5px;}
-  header h1 span{color:var(--accent);}
-  #updated{font-size:.78rem;color:var(--muted);}
-  .controls{padding:16px 32px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
-  input[type=text]{background:var(--card);border:1px solid var(--border);color:var(--text);
-    padding:8px 14px;border-radius:8px;font-size:.85rem;width:220px;outline:none;}
-  input[type=text]:focus{border-color:var(--accent);}
-  select{background:var(--card);border:1px solid var(--border);color:var(--text);
-    padding:8px 12px;border-radius:8px;font-size:.85rem;outline:none;cursor:pointer;}
-  .sort-btn{background:none;border:1px solid var(--border);color:var(--muted);
-    padding:6px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;}
-  .sort-btn.active{border-color:var(--accent);color:var(--accent);}
-  table{width:100%;border-collapse:collapse;font-size:.83rem;}
-  thead th{padding:10px 16px;text-align:right;color:var(--muted);font-weight:500;
-    border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);cursor:pointer;user-select:none;}
-  thead th:first-child{text-align:left;}
-  thead th:hover{color:var(--text);}
-  tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
-  tbody tr:hover{background:var(--card);}
-  td{padding:10px 16px;text-align:right;}
-  td:first-child{text-align:left;font-weight:600;color:var(--text);}
-  .pos{color:var(--green);}
-  .neg{color:var(--red);}
-  .na{color:var(--muted);}
-  .pill{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.78rem;}
-  .pill.pos{background:rgba(34,197,94,.12);}
-  .pill.neg{background:rgba(239,68,68,.12);}
-
-  /* Modal */
-  #modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center;}
-  #modal-overlay.open{display:flex;}
-  #modal{background:var(--card);border:1px solid var(--border);border-radius:14px;
-    width:min(760px,96vw);max-height:90vh;overflow-y:auto;padding:24px;}
-  #modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-  #modal-title{font-size:1.1rem;font-weight:700;}
-  #modal-close{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1;}
-  .period-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
-  .tab{padding:5px 14px;border-radius:6px;border:1px solid var(--border);
-    background:none;color:var(--muted);font-size:.8rem;cursor:pointer;}
-  .tab.active{border-color:var(--accent);color:var(--accent);background:rgba(108,99,255,.1);}
-  #chartContainer{position:relative;height:300px;}
-  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:16px;}
-  .stat-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;}
-  .stat-label{font-size:.72rem;color:var(--muted);margin-bottom:4px;}
-  .stat-val{font-size:1rem;font-weight:700;}
-
-  .table-wrap{overflow-x:auto;padding:0 32px 32px;}
-  #loading{text-align:center;padding:60px;color:var(--muted);}
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--accent:#6c63ff;--green:#22c55e;--red:#ef4444;--text:#e2e8f0;--muted:#94a3b8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+header{padding:20px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+header h1{font-size:1.4rem;font-weight:700;}
+header h1 span{color:var(--accent);}
+#updated{font-size:.78rem;color:var(--muted);}
+.controls{padding:16px 32px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+input[type=text]{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-size:.85rem;width:220px;outline:none;}
+input[type=text]:focus{border-color:var(--accent);}
+select{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:.85rem;outline:none;cursor:pointer;}
+.sort-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;}
+.sort-btn.active{border-color:var(--accent);color:var(--accent);}
+table{width:100%;border-collapse:collapse;font-size:.83rem;}
+thead th{padding:10px 16px;text-align:right;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);cursor:pointer;user-select:none;}
+thead th:first-child{text-align:left;}
+thead th:hover{color:var(--text);}
+tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+tbody tr:hover{background:var(--card);}
+td{padding:10px 16px;text-align:right;}
+td:first-child{text-align:left;font-weight:600;}
+.pos{color:var(--green);}
+.neg{color:var(--red);}
+.na{color:var(--muted);}
+.pill{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.78rem;}
+.pill.pos{background:rgba(34,197,94,.12);}
+.pill.neg{background:rgba(239,68,68,.12);}
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center;}
+#modal-overlay.open{display:flex;}
+#modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:min(760px,96vw);max-height:90vh;overflow-y:auto;padding:24px;}
+#modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+#modal-title{font-size:1.1rem;font-weight:700;}
+#modal-close{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;}
+.period-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.tab{padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);font-size:.8rem;cursor:pointer;}
+.tab.active{border-color:var(--accent);color:var(--accent);background:rgba(108,99,255,.1);}
+#chartContainer{position:relative;height:300px;}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:16px;}
+.stat-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;}
+.stat-label{font-size:.72rem;color:var(--muted);margin-bottom:4px;}
+.stat-val{font-size:1rem;font-weight:700;}
+.table-wrap{overflow-x:auto;padding:0 32px 32px;}
+#loading{text-align:center;padding:60px;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -66,7 +56,6 @@
   <h1>📈 <span>ETF</span> Monitor</h1>
   <span id="updated">Loading…</span>
 </header>
-
 <div class="controls">
   <input type="text" id="search" placeholder="Search ticker or name…"/>
   <select id="sortCol">
@@ -81,27 +70,25 @@
   </select>
   <button class="sort-btn active" id="dirBtn" onclick="toggleDir()">▼ Desc</button>
 </div>
-
 <div class="table-wrap">
   <div id="loading">⏳ Fetching data…</div>
   <table id="etfTable" style="display:none">
     <thead>
       <tr>
-        <th onclick="setSort('ticker')">Ticker ↕</th>
-        <th onclick="setSort('price')">Price ↕</th>
-        <th onclick="setSort('daily')">Daily % ↕</th>
-        <th onclick="setSort('1M')">1M ↕</th>
-        <th onclick="setSort('3M')">3M ↕</th>
-        <th onclick="setSort('6M')">6M ↕</th>
-        <th onclick="setSort('1Y')">1Y ↕</th>
-        <th onclick="setSort('3Y')">3Y ↕</th>
+        <th onclick="setSort('ticker')">Ticker</th>
+        <th onclick="setSort('price')">Price</th>
+        <th onclick="setSort('daily')">Daily %</th>
+        <th onclick="setSort('1M')">1M</th>
+        <th onclick="setSort('3M')">3M</th>
+        <th onclick="setSort('6M')">6M</th>
+        <th onclick="setSort('1Y')">1Y</th>
+        <th onclick="setSort('3Y')">3Y</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
   </table>
 </div>
 
-<!-- Modal -->
 <div id="modal-overlay" onclick="closeModal(event)">
   <div id="modal">
     <div id="modal-header">
@@ -115,69 +102,107 @@
 </div>
 
 <script>
-let allData = {}, historyData = {}, benchmark = "SPY";
-let sortKey = "1Y", sortDir = -1;
-let chartInstance = null;
-const PERIODS = ["1M","3M","6M","1Y","3Y"];
-const DAYS = {1M:30,3M:90,6M:180,1Y:365,3Y:1095};
+var allData = {};
+var historyData = {};
+var benchmark = "SPY";
+var sortKey = "1Y";
+var sortDir = -1;
+var chartInstance = null;
+var activePeriod = "1Y";
+var PERIODS = ["1M","3M","6M","1Y","3Y"];
+var DAYS = {"1M":30,"3M":90,"6M":180,"1Y":365,"3Y":1095};
 
-async function loadData(){
-  try {
-    const base = window.location.pathname.replace(/\/?$/, '/');
-    const [snap, hist] = await Promise.all([
-      fetch(base + "data/etf_data.json").then(r=>r.json()),
-      fetch(base + "data/etf_history.json").then(r=>r.json()).catch(()=>({}))
-    ]);
+function loadData() {
+  Promise.all([
+    fetch("./data/etf_data.json").then(function(r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }),
+    fetch("./data/etf_history.json").then(function(r) {
+      return r.json();
+    }).catch(function() { return {}; })
+  ]).then(function(results) {
+    var snap = results[0];
+    var hist = results[1];
     allData = snap;
     historyData = hist;
     benchmark = snap._benchmark || "SPY";
     document.getElementById("updated").textContent = "Last updated: " + (snap._updated || "—");
     renderTable();
-    document.getElementById("loading").style.display="none";
-    document.getElementById("etfTable").style.display="table";
-  } catch(e){
-    document.getElementById("loading").textContent = "⚠ Could not load data. Run the fetch script first.";
-  }
-}
-
-function fmt(v){ return v==null ? '<span class="na">—</span>' : `<span class="pill ${v>=0?'pos':'neg'} ${v>=0?'pos':'neg'}">${v>=0?'+':''}${v.toFixed(2)}%</span>`; }
-function fmtPrice(v){ return v==null?'—':'$'+v.toFixed(2); }
-
-function getRows(){
-  return Object.entries(allData)
-    .filter(([k])=>!k.startsWith('_'))
-    .map(([ticker,d])=>({ticker,...d}));
-}
-
-function renderTable(){
-  const q = document.getElementById("search").value.toLowerCase();
-  let rows = getRows().filter(r=>r.ticker.toLowerCase().includes(q));
-  rows.sort((a,b)=>{
-    let av = sortKey==="ticker" ? a.ticker : sortKey==="price" ? a.price : sortKey==="daily" ? a.daily : a.returns?.[sortKey];
-    let bv = sortKey==="ticker" ? b.ticker : sortKey==="price" ? b.price : sortKey==="daily" ? b.daily : b.returns?.[sortKey];
-    if(av==null) return 1; if(bv==null) return -1;
-    return sortDir*(av<bv?-1:av>bv?1:0);
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("etfTable").style.display = "table";
+  }).catch(function(e) {
+    document.getElementById("loading").textContent = "⚠ Could not load data: " + e.message;
+    console.error(e);
   });
-  const tbody = document.getElementById("tbody");
-  tbody.innerHTML = rows.map(r=>`
-    <tr onclick="openModal('${r.ticker}')">
-      <td>${r.ticker}</td>
-      <td>${fmtPrice(r.price)}</td>
-      <td>${fmt(r.daily)}</td>
-      ${PERIODS.map(p=>`<td>${fmt(r.returns?.[p])}</td>`).join('')}
-    </tr>`).join('');
 }
 
-function setSort(k){ sortKey=k; renderTable(); }
-function toggleDir(){ sortDir*=-1; document.getElementById("dirBtn").textContent=sortDir===1?"▲ Asc":"▼ Desc"; renderTable(); }
-document.getElementById("search").addEventListener("input",renderTable);
-document.getElementById("sortCol").addEventListener("change",e=>{sortKey=e.target.value;renderTable();});
+function fmt(v) {
+  if (v == null) return '<span class="na">—</span>';
+  var cls = v >= 0 ? "pos" : "neg";
+  var sign = v >= 0 ? "+" : "";
+  return '<span class="pill ' + cls + '">' + sign + v.toFixed(2) + '%</span>';
+}
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
-let activePeriod = "1Y";
+function fmtPrice(v) {
+  return v == null ? "—" : "$" + v.toFixed(2);
+}
 
-function openModal(ticker){
-  const d = allData[ticker]; if(!d) return;
+function getRows() {
+  return Object.keys(allData)
+    .filter(function(k) { return !k.startsWith("_"); })
+    .map(function(ticker) {
+      var d = allData[ticker];
+      return { ticker: ticker, price: d.price, daily: d.daily, returns: d.returns };
+    });
+}
+
+function renderTable() {
+  var q = document.getElementById("search").value.toLowerCase();
+  var rows = getRows().filter(function(r) {
+    return r.ticker.toLowerCase().includes(q);
+  });
+
+  rows.sort(function(a, b) {
+    var av, bv;
+    if (sortKey === "ticker") { av = a.ticker; bv = b.ticker; }
+    else if (sortKey === "price") { av = a.price; bv = b.price; }
+    else if (sortKey === "daily") { av = a.daily; bv = b.daily; }
+    else { av = a.returns ? a.returns[sortKey] : null; bv = b.returns ? b.returns[sortKey] : null; }
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return sortDir * (av < bv ? -1 : av > bv ? 1 : 0);
+  });
+
+  var html = rows.map(function(r) {
+    return '<tr onclick="openModal(\'' + r.ticker + '\')">' +
+      '<td>' + r.ticker + '</td>' +
+      '<td>' + fmtPrice(r.price) + '</td>' +
+      '<td>' + fmt(r.daily) + '</td>' +
+      PERIODS.map(function(p) { return '<td>' + fmt(r.returns ? r.returns[p] : null) + '</td>'; }).join('') +
+      '</tr>';
+  }).join('');
+
+  document.getElementById("tbody").innerHTML = html;
+}
+
+function setSort(k) { sortKey = k; renderTable(); }
+
+function toggleDir() {
+  sortDir *= -1;
+  document.getElementById("dirBtn").textContent = sortDir === 1 ? "▲ Asc" : "▼ Desc";
+  renderTable();
+}
+
+document.getElementById("search").addEventListener("input", renderTable);
+document.getElementById("sortCol").addEventListener("change", function(e) {
+  sortKey = e.target.value;
+  renderTable();
+});
+
+function openModal(ticker) {
+  var d = allData[ticker];
+  if (!d) return;
   document.getElementById("modal-title").textContent = ticker + " — ETF Detail";
   document.getElementById("modal-overlay").classList.add("open");
   buildTabs(ticker);
@@ -185,36 +210,49 @@ function openModal(ticker){
   buildStats(ticker);
 }
 
-function buildTabs(ticker){
-  document.getElementById("periodTabs").innerHTML = PERIODS.map(p=>
-    `<button class="tab ${p===activePeriod?'active':''}" onclick="switchPeriod('${ticker}','${p}')">${p}</button>`
-  ).join('');
+function buildTabs(ticker) {
+  document.getElementById("periodTabs").innerHTML = PERIODS.map(function(p) {
+    return '<button class="tab ' + (p === activePeriod ? "active" : "") + '" onclick="switchPeriod(\'' + ticker + '\',\'' + p + '\')">' + p + '</button>';
+  }).join('');
 }
 
-function switchPeriod(ticker,p){
-  activePeriod=p;
+function switchPeriod(ticker, p) {
+  activePeriod = p;
   buildTabs(ticker);
-  drawChart(ticker,p);
+  drawChart(ticker, p);
 }
 
-function drawChart(ticker,period){
-  const hist = historyData[ticker] || {};
-  const benchHist = historyData[benchmark] || {};
-  const days = DAYS[period];
-  const cutoff = new Date(Date.now()-days*864e5).toISOString().slice(0,10);
+function drawChart(ticker, period) {
+  var hist = historyData[ticker] || {};
+  var benchHist = historyData[benchmark] || {};
+  var days = DAYS[period];
+  var cutoffDate = new Date(Date.now() - days * 86400000);
+  var cutoff = cutoffDate.toISOString().slice(0, 10);
 
-  const dates = Object.keys(hist).filter(d=>d>=cutoff).sort();
-  if(dates.length<2){ renderNoData(); return; }
+  var dates = Object.keys(hist).filter(function(d) { return d >= cutoff; }).sort();
 
-  const base = hist[dates[0]];
-  const prices = dates.map(d=>+(((hist[d]-base)/base*100).toFixed(2)));
+  if (dates.length < 2) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    var ctx = document.getElementById("myChart").getContext("2d");
+    ctx.clearRect(0, 0, 9999, 9999);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "14px Inter";
+    ctx.textAlign = "center";
+    ctx.fillText("Not enough history for this period yet.", ctx.canvas.width / 2, 150);
+    return;
+  }
 
-  const bBase = benchHist[dates[0]];
-  const bPrices = bBase ? dates.map(d=>benchHist[d]!=null?+(((benchHist[d]-bBase)/bBase*100).toFixed(2)):null) : null;
+  var base = hist[dates[0]];
+  var prices = dates.map(function(d) { return +((( hist[d] - base) / base * 100).toFixed(2)); });
 
-  if(chartInstance){ chartInstance.destroy(); chartInstance=null; }
-  const ctx = document.getElementById("myChart").getContext("2d");
-  const datasets = [{
+  var bBase = benchHist[dates[0]];
+  var bPrices = bBase ? dates.map(function(d) {
+    return benchHist[d] != null ? +((( benchHist[d] - bBase) / bBase * 100).toFixed(2)) : null;
+  }) : null;
+
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  var ctx = document.getElementById("myChart").getContext("2d");
+  var datasets = [{
     label: ticker,
     data: prices,
     borderColor: "#6c63ff",
@@ -224,54 +262,51 @@ function drawChart(ticker,period){
     fill: true,
     backgroundColor: "rgba(108,99,255,.08)"
   }];
-  if(bPrices && ticker!==benchmark){
+  if (bPrices && ticker !== benchmark) {
     datasets.push({
-      label: benchmark+" (benchmark)",
+      label: benchmark + " (benchmark)",
       data: bPrices,
       borderColor: "#94a3b8",
       borderWidth: 1.5,
-      borderDash: [4,4],
+      borderDash: [4, 4],
       pointRadius: 0,
       tension: .3,
-      fill: false,
+      fill: false
     });
   }
-  chartInstance = new Chart(ctx,{
-    type:"line",
-    data:{labels:dates,datasets},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:"#94a3b8",font:{size:11}}},tooltip:{mode:"index",intersect:false}},
-      scales:{
-        x:{ticks:{color:"#64748b",maxTicksLimit:8,font:{size:10}},grid:{color:"#1e2235"}},
-        y:{ticks:{color:"#64748b",font:{size:10},callback:v=>v+"%"},grid:{color:"#1e2235"}}
+  chartInstance = new Chart(ctx, {
+    type: "line",
+    data: { labels: dates, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: "#94a3b8", font: { size: 11 } } },
+        tooltip: { mode: "index", intersect: false }
+      },
+      scales: {
+        x: { ticks: { color: "#64748b", maxTicksLimit: 8, font: { size: 10 } }, grid: { color: "#1e2235" } },
+        y: { ticks: { color: "#64748b", font: { size: 10 }, callback: function(v) { return v + "%"; } }, grid: { color: "#1e2235" } }
       }
     }
   });
 }
 
-function renderNoData(){
-  if(chartInstance){chartInstance.destroy();chartInstance=null;}
-  const ctx=document.getElementById("myChart").getContext("2d");
-  ctx.clearRect(0,0,9999,9999);
-  ctx.fillStyle="#94a3b8";ctx.font="14px Inter";ctx.textAlign="center";
-  ctx.fillText("Not enough history for this period yet.",ctx.canvas.width/2,150);
+function buildStats(ticker) {
+  var d = allData[ticker];
+  if (!d) return;
+  var items = [
+    { label: "Price", val: fmtPrice(d.price) },
+    { label: "Daily", val: fmt(d.daily) }
+  ].concat(PERIODS.map(function(p) { return { label: p + " Return", val: fmt(d.returns ? d.returns[p] : null) }; }));
+
+  document.getElementById("statsGrid").innerHTML = items.map(function(i) {
+    return '<div class="stat-card"><div class="stat-label">' + i.label + '</div><div class="stat-val">' + i.val + '</div></div>';
+  }).join('');
 }
 
-function buildStats(ticker){
-  const d = allData[ticker]; if(!d) return;
-  const items = [
-    {label:"Price",val:fmtPrice(d.price)},
-    {label:"Daily",val:fmt(d.daily)},
-    ...PERIODS.map(p=>({label:p+" Return",val:fmt(d.returns?.[p])}))
-  ];
-  document.getElementById("statsGrid").innerHTML = items.map(i=>
-    `<div class="stat-card"><div class="stat-label">${i.label}</div><div class="stat-val">${i.val}</div></div>`
-  ).join('');
-}
-
-function closeModal(e){
-  if(!e||e.target===document.getElementById("modal-overlay")||e.currentTarget===document.getElementById("modal-close")){
+function closeModal(e) {
+  if (!e || e.target === document.getElementById("modal-overlay")) {
     document.getElementById("modal-overlay").classList.remove("open");
   }
 }
