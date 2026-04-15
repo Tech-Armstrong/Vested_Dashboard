@@ -20,6 +20,10 @@ BENCHMARK    = "SPY"
 DATA_FILE    = "docs/data/etf_data.json"
 HISTORY_FILE = "docs/data/etf_history.json"
 
+# Trading day periods (industry standard — same as Bloomberg/Morningstar)
+# ~21 trading days per month
+PERIODS = {"1M": 21, "3M": 63, "6M": 126, "1Y": 252, "3Y": 756}
+
 def pct(new, old):
     if old and old != 0:
         return round((new - old) / abs(old) * 100, 2)
@@ -38,38 +42,34 @@ def save_json(path, data):
 
 def extract_close(raw, ticker):
     """
-    Handle yfinance MultiIndex columns which come as (Ticker, Field)
-    when group_by='ticker', e.g. ('SPY', 'Close').
+    Safely extract a 1-D Close price Series from yfinance's MultiIndex output.
+    Handles both (Ticker, Field) and (Field, Ticker) column orderings.
     """
     cols = raw.columns
-    print(f"    DEBUG {ticker}: top-level keys = {list(cols.get_level_values(0).unique()[:5])}")
 
-    # Try (Ticker, Field) order  — group_by='ticker'
     if (ticker, "Close") in cols:
         close = raw[(ticker, "Close")]
-    # Try (Field, Ticker) order  — default yfinance
     elif ("Close", ticker) in cols:
         close = raw[("Close", ticker)]
-    # Flat columns fallback (single ticker download)
     elif "Close" in cols:
         close = raw["Close"]
         if isinstance(close, pd.DataFrame):
             close = close.iloc[:, 0]
     else:
-        print(f"    DEBUG {ticker}: 'Close' not found in columns {list(cols[:8])}")
+        print(f"    ⚠ {ticker}: 'Close' not found. Cols sample: {list(cols[:6])}")
         return None
 
     close = pd.to_numeric(close, errors="coerce").dropna()
     return close if len(close) >= 2 else None
 
 def main():
-    periods = {"1M": 30, "3M": 90, "6M": 180, "1Y": 365, "3Y": 1095}
     today   = datetime.utcnow().date()
     today_s = today.strftime("%Y-%m-%d")
     history = load_json(HISTORY_FILE)
 
     end_s   = (today + timedelta(days=1)).strftime("%Y-%m-%d")
-    start_s = (today - timedelta(days=periods["3Y"] + 30)).strftime("%Y-%m-%d")
+    # Need ~1150 calendar days to guarantee 756 trading days for 3Y
+    start_s = (today - timedelta(days=1150)).strftime("%Y-%m-%d")
 
     print(f"Downloading {len(ETFS)} tickers  {start_s} → {end_s}")
     raw = yf.download(
@@ -81,7 +81,7 @@ def main():
         group_by="ticker",
         threads=True,
     )
-    print(f"Raw shape: {raw.shape}  |  columns sample: {list(raw.columns[:6])}")
+    print(f"Raw shape: {raw.shape}  |  columns type: {type(raw.columns).__name__}")
 
     snapshot = {}
     ok = 0
@@ -89,7 +89,7 @@ def main():
     for ticker in ETFS:
         try:
             close = extract_close(raw, ticker)
-            if close is None:
+            if close is None or len(close) < 2:
                 print(f"  ⚠ {ticker}: no usable data")
                 continue
 
@@ -97,11 +97,14 @@ def main():
             last_date = close.index[-1].date().strftime("%Y-%m-%d")
             daily_ret = pct(price, float(close.iloc[-2]))
 
+            # Calculate returns using trading day row offsets (not calendar days)
             rets = {}
-            for label, days in periods.items():
-                target = today - timedelta(days=days)
-                past   = close[close.index.date <= target]
-                rets[label] = pct(price, float(past.iloc[-1])) if not past.empty else None
+            for label, tdays in PERIODS.items():
+                if len(close) > tdays:
+                    past_price = float(close.iloc[-(tdays + 1)])
+                    rets[label] = pct(price, past_price)
+                else:
+                    rets[label] = None  # Not enough history yet
 
             snapshot[ticker] = {
                 "price":   round(price, 4),
@@ -109,21 +112,24 @@ def main():
                 "returns": rets,
                 "updated": last_date,
             }
+
+            # Save daily close to persistent history
             history.setdefault(ticker, {})[last_date] = round(price, 4)
             ok += 1
-            print(f"  ✓ {ticker}: ${price:.2f}  daily={daily_ret}%")
+            print(f"  ✓ {ticker}: ${price:.2f}  daily={daily_ret}%  1Y={rets.get('1Y')}%")
 
         except Exception as e:
             print(f"  ✗ {ticker}: {e}")
 
     if not ok:
-        print("ERROR: 0 ETFs fetched — aborting.")
+        print("ERROR: 0 ETFs fetched — aborting to preserve existing data.")
         sys.exit(1)
 
     snapshot["_benchmark"] = BENCHMARK
     snapshot["_updated"]   = today_s
     save_json(DATA_FILE, snapshot)
 
+    # Trim history older than 4 years
     cutoff = (today - timedelta(days=4 * 365)).strftime("%Y-%m-%d")
     for tk in history:
         history[tk] = {d: v for d, v in history[tk].items() if d >= cutoff}
